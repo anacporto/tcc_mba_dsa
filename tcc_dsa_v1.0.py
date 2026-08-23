@@ -79,8 +79,8 @@ gpu_info = tf.config.list_physical_devices('GPU')
 if gpu_info:
     print(f"GPU Disponível: {gpu_info}")
 else:
-    print("GPU não detectada. O treinamento será mais lento (Rodando em CPU).")
-    print("No Google Colab, vá em 'Runtime' > 'Change runtime type' e selecione T4 GPU.")
+    print("GPU não detectada. O treinamento rodará em CPU.")
+    print("Para rodar em GPU pelo Google Colab, vá em 'Runtime' > 'Change runtime type' e selecione T4 GPU.")
 
 # --- CONFIGURAÇÃO DE REPRODUTIBILIDADE (SEED) ---
 SEED_GLOBAL = 42
@@ -465,17 +465,17 @@ print(f"MAE (Erro Médio Absoluto):      {mae:.4f}")
 print(f"RMSE (Erro Quadrático Médio):   {rmse:.4f}")
 
 # GRÁFICO 1: DISPERSÃO
-plt.figure(figsize=(7, 7))
-plt.scatter(y_mag_test, pred_mag, alpha=0.4, color='blue', s=15, label='Predições')
-plt.plot([0, 1], [0, 1], 'r--', lw=2, label='Ideal')
-plt.xlabel('Magnitude Real (Normalizada)')
-plt.ylabel('Magnitude Predita (Normalizada)')
-plt.title(f'Regressão de Magnitude\nR² = {r2:.4f} | MAE = {mae:.4f}')
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.axis('equal')
-plt.xlim(-0.05, 1.05)
-plt.ylim(-0.05, 1.05)
+fig, ax = plt.subplots(figsize=(7, 7))
+ax.scatter(y_mag_test, pred_mag, alpha=0.4, color='blue', s=15, label='Predições')
+ax.plot([0, 1], [0, 1], 'r--', lw=2, label='Ideal')
+ax.set_xlabel('Magnitude Real (Normalizada)')
+ax.set_ylabel('Magnitude Predita (Normalizada)')
+ax.set_title(f'Regressão de Magnitude\nR² = {r2:.4f} | MAE = {mae:.4f}')
+ax.legend()
+ax.grid(True, alpha=0.3)
+ax.set_xlim(-0.05, 1.05)
+ax.set_ylim(-0.05, 1.05)
+ax.set_aspect('equal', adjustable='box')   # <- substitui plt.axis('equal')
 plt.show()
 
 print("\n--- 📍 2. Avaliação de Localização e Detecção ---")
@@ -663,13 +663,18 @@ try:
         print(f"⚠️ Nó {node_target} não encontrado no mapeamento de zonas.")
         real_zone = -1
 
+    from datetime import timedelta
+
     # 5. Comparar com a IA no dia do pico
-    peak_date = df_real_leaks[top_leak_pipe].idxmax()
+    raw_peak = df_real_leaks[top_leak_pipe].idxmax()
+    peak_date = pd.to_datetime(raw_peak)
     print(f"📅 Data do pico do vazamento: {peak_date}")
 
-    # Janela de +/- 2 dias ao redor do pico
-    start = peak_date - pd.Timedelta(days=2)
-    end = peak_date + pd.Timedelta(days=2)
+    start = peak_date - timedelta(days=2)
+    end = peak_date + timedelta(days=2)
+
+    # Garante que a coluna 'Data' seja do tipo datetime64[ns] para a máscara
+    results_2019['Data'] = pd.to_datetime(results_2019['Data'])
 
     mask = (results_2019['Data'] >= start) & (results_2019['Data'] <= end)
     subset = results_2019.loc[mask]
@@ -795,4 +800,3 @@ except Exception as e:
     traceback.print_exc()
 
 """# **FIM!!!**"""
-
