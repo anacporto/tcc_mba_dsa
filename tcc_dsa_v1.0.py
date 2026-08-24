@@ -377,62 +377,9 @@ plt.show()
 """
 ## --- FASE 5: VALIDAÇÃO DOS RESULTADOS E MÉTRICAS OBTIDAS ---"""
 
-# --- VALIDAÇÃO RESULTADOS ---
-
-# 1. Carregar 2019
-df_2019 = pd.read_csv('2019_SCADA_Pressures.csv', index_col=0, parse_dates=True, sep=';', decimal=',')
-df_2019 = df_2019[sensor_columns] # Filtrar sensores
-
-df_2019 = df_2019.ffill().bfill().fillna(0)
-
-# 2. Pré-processamento (Resíduos + Normalização)
-baseline_mean_vector = baseline_series.mean(axis=0)
-X_2019_residuals = df_2019 - baseline_mean_vector
-
-# Normalizar
-vals = X_2019_residuals.values
-vals_scaled = scaler_X.transform(vals)
-
-# 3. Criar Sequências (Janela Deslizante)
-def create_sequences(data, seq_length):
-    xs = []
-    indexes = []
-    for i in range(len(data) - seq_length):
-        x = data[i:(i+seq_length)]
-        xs.append(x)
-        indexes.append(df_2019.index[i+seq_length])
-    return np.array(xs), indexes
-
-print("Gerando sequências deslizantes (Isso pode levar 1 minuto)...")
-
-X_2019_seq, time_indexes = create_sequences(vals_scaled, seq_length=96)
-
-if X_2019_seq.shape[1] != 96:
-    raise ValueError(f"ERRO: A janela temporal está {X_2019_seq.shape[1]}, mas o modelo exige 96!")
-
-print("Rodando a CNN-LSTM nos dados reais...")
-pred_prob, pred_mag = model_hybrid.predict(X_2019_seq, batch_size=256, verbose=1)
-
-# 4. Montar Resultados
-results_2019 = pd.DataFrame({
-    'Data': time_indexes,
-    'Confianca': np.max(pred_prob, axis=1),
-    'Magnitude_Estimada': pred_mag.flatten()
-})
-
-# 5. Plotar
-plt.figure(figsize=(15, 6))
-plt.plot(results_2019['Data'], results_2019['Magnitude_Estimada'].rolling(12).mean(),
-         color='darkred', linewidth=1, label='Magnitude Estimada (CNN-LSTM)')
-plt.title('Monitoramento 2019: Detecção Espaço-Temporal')
-plt.ylabel('Magnitude Normalizada')
-plt.grid(True, alpha=0.3)
-plt.legend()
-plt.show()
-
 # --- AVALIAÇÃO CENÁRIO SINTÉTICO ---
 
-print("📊 Calculando Métricas Finais e Gerando Gráficos para o TCC...")
+print("📊 Calculando Métricas Finais")
 
 # 1. Recuperar Coordenadas e Zonas
 try:
@@ -556,6 +503,59 @@ except Exception as e:
 print("\n✅ Avaliação Completa Finalizada!")
 
 """## --- FASE 6: COMPARAÇÃO REAL VS PREDITO (GABARITO 2019) ---"""
+
+# --- VALIDAÇÃO RESULTADOS ---
+
+# 1. Carregar 2019
+df_2019 = pd.read_csv('2019_SCADA_Pressures.csv', index_col=0, parse_dates=True, sep=';', decimal=',')
+df_2019 = df_2019[sensor_columns] # Filtrar sensores
+
+df_2019 = df_2019.ffill().bfill().fillna(0)
+
+# 2. Pré-processamento (Resíduos + Normalização)
+baseline_mean_vector = baseline_series.mean(axis=0)
+X_2019_residuals = df_2019 - baseline_mean_vector
+
+# Normalizar
+vals = X_2019_residuals.values
+vals_scaled = scaler_X.transform(vals)
+
+# 3. Criar Sequências (Janela Deslizante)
+def create_sequences(data, seq_length):
+    xs = []
+    indexes = []
+    for i in range(len(data) - seq_length):
+        x = data[i:(i+seq_length)]
+        xs.append(x)
+        indexes.append(df_2019.index[i+seq_length])
+    return np.array(xs), indexes
+
+print("Gerando sequências deslizantes (Isso pode levar 1 minuto)...")
+
+X_2019_seq, time_indexes = create_sequences(vals_scaled, seq_length=96)
+
+if X_2019_seq.shape[1] != 96:
+    raise ValueError(f"ERRO: A janela temporal está {X_2019_seq.shape[1]}, mas o modelo exige 96!")
+
+print("Rodando a CNN-LSTM nos dados reais...")
+pred_prob, pred_mag = model_hybrid.predict(X_2019_seq, batch_size=256, verbose=1)
+
+# 4. Montar Resultados
+results_2019 = pd.DataFrame({
+    'Data': time_indexes,
+    'Confianca': np.max(pred_prob, axis=1),
+    'Magnitude_Estimada': pred_mag.flatten()
+})
+
+# 5. Plotar
+plt.figure(figsize=(15, 6))
+plt.plot(results_2019['Data'], results_2019['Magnitude_Estimada'].rolling(12).mean(),
+         color='darkred', linewidth=1, label='Magnitude Estimada (CNN-LSTM)')
+plt.title('Monitoramento 2019: Detecção Espaço-Temporal')
+plt.ylabel('Magnitude Normalizada')
+plt.grid(True, alpha=0.3)
+plt.legend()
+plt.show()
 
 # --- VALIDAÇÃO CRUZADA E VISUALIZAÇÃO FINAL (GABARITO 2019) ---
 
